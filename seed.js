@@ -16,31 +16,54 @@ const BATCH_SIZE = 10000;
 async function insertUsers(total = 200000) {
   console.log(`Inserting ${total} users...`);
   const conn = await pool.getConnection();
+
+  const BATCH_SIZE = 1000;
+  const existingUsernames = new Set();
+  const existingEmails = new Set();
+
   try {
-    for (let i = 0; i < total; i += BATCH_SIZE) {
+    let inserted = 0;
+
+    while (inserted < total) {
       const batch = [];
-      for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
+
+      while (batch.length < BATCH_SIZE && inserted + batch.length < total) {
+        const username = faker.internet.userName() + faker.number.int({ max: 9999 });
+        const email = faker.internet.email();
+
+        if (existingUsernames.has(username) || existingEmails.has(email)) continue;
+
+        existingUsernames.add(username);
+        existingEmails.add(email);
+
         batch.push([
-          faker.internet.username() + faker.number.int({ max: 9999 }),
-          faker.internet.email(),
+          username,
+          email,
           faker.internet.password(),
           faker.phone.number('+372 ### ####'),
-          faker.date.past({ years: 5 }).toISOString().slice(0, 19).replace('T', ' '),
+          faker.date.past({ years: 5 }).toISOString().slice(0, 19).replace('T', ' ')
         ]);
       }
+
       const placeholders = batch.map(() => '(?,?,?,?,?)').join(',');
       const flatValues = batch.flat();
+
       await conn.query(
-        `INSERT INTO users (username, email, password_hash, phone_number, created_at) VALUES ${placeholders}`,
+        `INSERT INTO users (username, email, password_hash, phone_number, created_at)
+         VALUES ${placeholders}`,
         flatValues
       );
-      process.stdout.write(`Inserted users: ${Math.min(i + BATCH_SIZE, total)}\r`);
+
+      inserted += batch.length;
+      process.stdout.write(`Inserted users: ${inserted}\r`);
     }
-    console.log('\nUsers inserted.');
+
+    console.log('\nAll users inserted.');
   } finally {
     conn.release();
   }
 }
+
 
 async function insertProperties(total = 2000000) {
   console.log(`Inserting ${total} properties...`);
