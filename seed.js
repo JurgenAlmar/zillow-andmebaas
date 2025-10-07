@@ -1,7 +1,8 @@
 import mariadb from 'mariadb';
-import { faker } from '@faker-js/faker';
+import { Faker, en } from '@faker-js/faker';
 
-faker.seed(12345); // Reprodutseeritavus
+const faker = new Faker({ locale: [en] });
+faker.seed(12345);
 
 const pool = mariadb.createPool({
   host: 'localhost',
@@ -21,7 +22,7 @@ async function insertUsers(total = 200000) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
         batch.push([
-          faker.internet.userName() + faker.datatype.number({ max: 9999 }), // et ei korduks
+          faker.internet.userName() + faker.datatype.number({ max: 9999 }),
           faker.internet.email(),
           faker.internet.password(),
           faker.phone.number('+372 ### ####'),
@@ -45,8 +46,6 @@ async function insertUsers(total = 200000) {
 async function insertProperties(total = 2000000) {
   console.log(`Inserting ${total} properties...`);
   const conn = await pool.getConnection();
-
-  // Eeldame, et users on juba olemas
   const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
   const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
 
@@ -108,7 +107,6 @@ async function insertProperties(total = 2000000) {
 async function insertPropertyImages() {
   console.log('Inserting property images...');
   const conn = await pool.getConnection();
-
   const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
   const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
 
@@ -143,7 +141,6 @@ async function insertPropertyImages() {
 async function insertFavorites(total = 1000000) {
   console.log(`Inserting ${total} favorites...`);
   const conn = await pool.getConnection();
-
   const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
   const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
   const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
@@ -181,13 +178,12 @@ async function insertFavorites(total = 1000000) {
 async function insertInquiries(total = 500000) {
   console.log(`Inserting ${total} inquiries...`);
   const conn = await pool.getConnection();
-
   const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
   const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
   const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
   const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
 
-  const agentRatio = 0.2; // 20% päringutest on agentidega
+  const agentRatio = 0.2;
 
   try {
     for (let i = 0; i < total; i += BATCH_SIZE) {
@@ -202,65 +198,4 @@ async function insertInquiries(total = 500000) {
         if (Math.random() < 0.5) {
           message = faker.lorem.sentence();
         } else {
-          phone_number = faker.phone.number('+372 ### ####');
-        }
-
-        const inquiry_at = faker.date.recent(90).toISOString().slice(0, 19).replace('T', ' ');
-
-        batch.push([user_id, property_id, agent_id, message, phone_number, inquiry_at]);
-      }
-      const placeholders = batch.map(() => '(?,?,?,?,?,?)').join(',');
-      const flatValues = batch.flat();
-      await conn.query(
-        `INSERT INTO inquiries (user_id, property_id, agent_id, message, phone_number, inquiry_at) VALUES ${placeholders}`,
-        flatValues
-      );
-      process.stdout.write(`Inserted inquiries: ${Math.min(i + BATCH_SIZE, total)}\r`);
-    }
-    console.log('\nInquiries inserted.');
-  } finally {
-    conn.release();
-  }
-}
-
-async function disableIndexesAndFKs() {
-  const conn = await pool.getConnection();
-  try {
-    console.log('Disabling foreign key checks...');
-    await conn.query('SET FOREIGN_KEY_CHECKS=0;');
-  } finally {
-    conn.release();
-  }
-}
-
-async function enableIndexesAndFKs() {
-  const conn = await pool.getConnection();
-  try {
-    console.log('Enabling foreign key checks...');
-    await conn.query('SET FOREIGN_KEY_CHECKS=1;');
-  } finally {
-    conn.release();
-  }
-}
-
-async function main() {
-  try {
-    await disableIndexesAndFKs();
-
-    await insertUsers(200000);
-    await insertProperties(2000000);
-    await insertPropertyImages();
-    await insertFavorites(1000000);
-    await insertInquiries(500000);
-
-    await enableIndexesAndFKs();
-
-    console.log('Seeding completed successfully!');
-  } catch (err) {
-    console.error('Error during seeding:', err);
-  } finally {
-    await pool.end();
-  }
-}
-
-main();
+          phone_number = faker.phone.number('+372 ###
