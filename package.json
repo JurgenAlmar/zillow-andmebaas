@@ -1,0 +1,30 @@
+{
+  "name": "zillow-andmebaas",
+  "version": "1.0.0",
+  "description": "Zillow database seeding project with MariaDB",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "seed": "bun seed.js",
+    "clear": "bun clear-db.js",
+    "reseed": "bun clear-db.js && bun seed.js",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:seed": "docker compose exec bun bun seed.js",
+    "docker:clear": "docker compose exec bun bun clear-db.js",
+    "docker:reseed": "docker compose exec bun bun clear-db.js && docker compose exec bun bun seed.js"
+  },
+  "dependencies": {
+    "mariadb": "^3.4.5",
+    "@faker-js/faker": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
