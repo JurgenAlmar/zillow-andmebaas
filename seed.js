@@ -1,7 +1,6 @@
 import mariadb from 'mariadb';
-import { Faker, en } from '@faker-js/faker';
+import { faker } from '@faker-js/faker';
 
-const faker = new Faker({ locale: [en] });
 faker.seed(12345);
 
 const pool = mariadb.createPool({
@@ -22,11 +21,11 @@ async function insertUsers(total = 200000) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
         batch.push([
-          faker.internet.userName() + faker.datatype.number({ max: 9999 }),
+          faker.internet.username() + faker.number.int({ max: 9999 }),
           faker.internet.email(),
           faker.internet.password(),
           faker.phone.number('+372 ### ####'),
-          faker.date.past(5).toISOString().slice(0, 19).replace('T', ' '),
+          faker.date.past({ years: 5 }).toISOString().slice(0, 19).replace('T', ' '),
         ]);
       }
       const placeholders = batch.map(() => '(?,?,?,?,?)').join(',');
@@ -58,19 +57,19 @@ async function insertProperties(total = 2000000) {
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
-        const owner_id = faker.datatype.number({ min: minUserId, max: maxUserId });
+        const owner_id = faker.number.int({ min: minUserId, max: maxUserId });
         const city = faker.helpers.arrayElement(cities);
         const state = faker.helpers.arrayElement(states);
-        const bedrooms = faker.datatype.number({ min: 1, max: 7 });
-        const bathrooms = faker.datatype.number({ min: 1, max: 5 });
-        const sqft = faker.datatype.number({ min: 400, max: 10000 });
-        const price = faker.datatype.number({ min: 30000, max: 1000000 });
+        const bedrooms = faker.number.int({ min: 1, max: 7 });
+        const bathrooms = faker.number.int({ min: 1, max: 5 });
+        const sqft = faker.number.int({ min: 400, max: 10000 });
+        const price = faker.number.int({ min: 30000, max: 1000000 });
         const property_type = faker.helpers.arrayElement(propertyTypes);
         const status = faker.helpers.arrayElement(statuses);
-        const address = faker.address.streetAddress();
-        const zipcode = faker.address.zipCode('#####');
+        const address = faker.location.streetAddress();
+        const zipcode = faker.location.zipCode('#####');
         const description = faker.lorem.sentences(3);
-        const listing_at = faker.date.past(2).toISOString().slice(0, 19).replace('T', ' ');
+        const listing_at = faker.date.past({ years: 2 }).toISOString().slice(0, 19).replace('T', ' ');
 
         batch.push([
           owner_id,
@@ -152,8 +151,8 @@ async function insertFavorites(total = 1000000) {
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = [];
       while (batch.length < BATCH_SIZE && uniquePairs.size < total) {
-        const user_id = faker.datatype.number({ min: minUserId, max: maxUserId });
-        const property_id = faker.datatype.number({ min: minPropId, max: maxPropId });
+        const user_id = faker.number.int({ min: minUserId, max: maxUserId });
+        const property_id = faker.number.int({ min: minPropId, max: maxPropId });
         const key = `${user_id}-${property_id}`;
         if (!uniquePairs.has(key)) {
           uniquePairs.add(key);
@@ -189,46 +188,11 @@ async function insertInquiries(total = 500000) {
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
-        const user_id = faker.datatype.number({ min: minUserId, max: maxUserId });
-        const property_id = faker.datatype.number({ min: minPropId, max: maxPropId });
-        const agent_id = Math.random() < agentRatio ? faker.datatype.number({ min: minUserId, max: maxUserId }) : null;
+        const user_id = faker.number.int({ min: minUserId, max: maxUserId });
+        const property_id = faker.number.int({ min: minPropId, max: maxPropId });
+        const agent_id = Math.random() < agentRatio ? faker.number.int({ min: minUserId, max: maxUserId }) : null;
 
         let message = null;
         let phone_number = null;
         if (Math.random() < 0.5) {
           message = faker.lorem.sentence();
-        } else {
-          phone_number = faker.phone.number('+372 ### ####');
-        }
-
-        const inquiry_at = faker.date.recent(90).toISOString().slice(0, 19).replace('T', ' ');
-
-        batch.push([user_id, property_id, agent_id, message, phone_number, inquiry_at]);
-      }
-      const placeholders = batch.map(() => '(?,?,?,?,?,?)').join(',');
-      const flatValues = batch.flat();
-      await conn.query(
-        `INSERT INTO inquiries (user_id, property_id, agent_id, message, phone_number, inquiry_at) VALUES ${placeholders}`,
-        flatValues
-      );
-      process.stdout.write(`Inserted inquiries: ${Math.min(i + BATCH_SIZE, total)}\r`);
-    }
-    console.log('\nInquiries inserted.');
-  } finally {
-    conn.release();
-  }
-}
-
-async function main() {
-  await insertUsers();
-  await insertProperties();
-  await insertPropertyImages();
-  await insertFavorites();
-  await insertInquiries();
-  pool.end();
-}
-
-main().catch(err => {
-  console.error(err);
-  pool.end();
-});
