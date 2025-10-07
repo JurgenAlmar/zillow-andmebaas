@@ -15,40 +15,18 @@ SET time_zone = "+00:00";
 
 -- --------------------------------------------------------
 
--- Table structure for table `favorites`
-CREATE TABLE `favorites` (
-  `favorite_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id` int UNSIGNED NOT NULL,
-  `property_id` int UNSIGNED NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  UNIQUE KEY `unique_favorite` (`user_id`, `property_id`),
-  PRIMARY KEY (`favorite_id`),
-  KEY `user_id` (`user_id`),
-  KEY `property_id` (`property_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
--- Table structure for table `inquiries`
-CREATE TABLE `inquiries` (
-  `inquiry_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id` int UNSIGNED NOT NULL,
-  `property_id` int UNSIGNED NOT NULL,
-  `agent_id` int UNSIGNED DEFAULT NULL,
-  `message` text DEFAULT NULL,
+-- Table structure for table `users`
+CREATE TABLE `users` (
+  `user_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
   `phone_number` varchar(20) DEFAULT NULL,
-  `inquiry_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`inquiry_id`),
-  KEY `user_id` (`user_id`),
-  KEY `property_id` (`property_id`),
-  KEY `agent_id` (`agent_id`),
-  CONSTRAINT `chk_inquiry_contact` CHECK (
-    (message IS NOT NULL AND LENGTH(TRIM(message)) > 0) OR 
-    (phone_number IS NOT NULL AND LENGTH(TRIM(phone_number)) > 0)
-  ),
-  CONSTRAINT `fk_inq_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
-  CONSTRAINT `fk_inq_property` FOREIGN KEY (`property_id`) REFERENCES `properties` (`property_id`),
-  CONSTRAINT `fk_inq_agent` FOREIGN KEY (`agent_id`) REFERENCES `users` (`user_id`)
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `unique_username` (`username`),
+  UNIQUE KEY `unique_email` (`email`),
+  CONSTRAINT `chk_username_or_email` CHECK (username <> '' OR email <> '')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -68,11 +46,25 @@ CREATE TABLE `properties` (
   `sqft` int UNSIGNED NOT NULL,
   `listing_at` datetime NOT NULL DEFAULT current_timestamp(),
   `status` enum('active', 'sold', 'pending') NOT NULL DEFAULT 'active',
-  `property_type` enum('condo', 'house', 'apartment', 'townhouse', 'land') NOT NULL;
+  `property_type` enum('condo', 'house', 'apartment', 'townhouse', 'land') NOT NULL,
   PRIMARY KEY (`property_id`),
   KEY `owner_id` (`owner_id`),
   KEY `price` (`price`),
   CONSTRAINT `fk_prop_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+-- Table structure for table `favorites`
+CREATE TABLE `favorites` (
+  `favorite_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int UNSIGNED NOT NULL,
+  `property_id` int UNSIGNED NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  UNIQUE KEY `unique_favorite` (`user_id`, `property_id`),
+  PRIMARY KEY (`favorite_id`),
+  KEY `user_id` (`user_id`),
+  KEY `property_id` (`property_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -94,18 +86,26 @@ CREATE TABLE `property_images` (
 
 -- --------------------------------------------------------
 
--- Table structure for table `users`
-CREATE TABLE `users` (
-  `user_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
+-- Table structure for table `inquiries`
+CREATE TABLE `inquiries` (
+  `inquiry_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int UNSIGNED NOT NULL,
+  `property_id` int UNSIGNED NOT NULL,
+  `agent_id` int UNSIGNED DEFAULT NULL,
+  `message` text DEFAULT NULL,
   `phone_number` varchar(20) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`user_id`),
-  UNIQUE KEY `unique_username` (`username`),
-  UNIQUE KEY `unique_email` (`email`),
-  CONSTRAINT `chk_username_or_email` CHECK (username <> '' OR email <> '')
+  `inquiry_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`inquiry_id`),
+  KEY `user_id` (`user_id`),
+  KEY `property_id` (`property_id`),
+  KEY `agent_id` (`agent_id`),
+  CONSTRAINT `chk_inquiry_contact` CHECK (
+    (message IS NOT NULL AND LENGTH(TRIM(message)) > 0) OR
+    (phone_number IS NOT NULL AND LENGTH(TRIM(phone_number)) > 0)
+  ),
+  CONSTRAINT `fk_inq_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
+  CONSTRAINT `fk_inq_property` FOREIGN KEY (`property_id`) REFERENCES `properties` (`property_id`),
+  CONSTRAINT `fk_inq_agent` FOREIGN KEY (`agent_id`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 COMMIT;
