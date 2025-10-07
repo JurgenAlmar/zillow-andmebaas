@@ -189,4 +189,36 @@ async function insertInquiries(total = 500000) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
         const user_id = faker.number.int({ min: minUserId, max: maxUserId });
-        const property_id = faker.number.int({
+        const property_id = faker.number.int({ min: minPropId, max: maxPropId });
+        const agent_id = Math.random() < agentRatio
+          ? faker.number.int({ min: minUserId, max: maxUserId })
+          : null;
+        const message = faker.lorem.sentences(2);
+        const created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+        batch.push([user_id, property_id, agent_id, message, created_at]);
+      }
+      const placeholders = batch.map(() => '(?,?,?,?,?)').join(',');
+      const flatValues = batch.flat();
+      await conn.query(
+        `INSERT INTO inquiries (user_id, property_id, agent_id, message, created_at) VALUES ${placeholders}`,
+        flatValues
+      );
+      process.stdout.write(`Inserted inquiries: ${Math.min(i + BATCH_SIZE, total)}\r`);
+    }
+    console.log('\nInquiries inserted.');
+  } finally {
+    conn.release();
+  }
+}
+
+async function main() {
+  await insertUsers();
+  await insertProperties();
+  await insertPropertyImages();
+  await insertFavorites();
+  await insertInquiries();
+  await pool.end();
+}
+
+main().catch(console.error);
