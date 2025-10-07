@@ -189,9 +189,4 @@ async function insertInquiries(total = 500000) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
         const user_id = faker.number.int({ min: minUserId, max: maxUserId });
-        const property_id = faker.number.int({ min: minPropId, max: maxPropId });
-        const agent_id = Math.random() < agentRatio ? faker.number.int({ min: minUserId, max: maxUserId }) : null;
-
-        let message = null;
-        let phone_number = null;
-        if (Math.random()
+        const property_id = faker.number.int({
