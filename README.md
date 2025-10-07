@@ -19,7 +19,28 @@ Kõik muu (MariaDB, Bun, Node.js moodulid) käivitatakse konteinerites.
 
 ## Kiirstart
 
-### 1. Käivita konteinerid
+### 1. Seadista keskkonna muutujad
+
+Kopeeri `.env.example` failist `.env` fail (või kasuta vaikimisi väärtusi):
+
+```bash
+cp .env.example .env
+```
+
+Muuda `.env` failis andmebaasi mandaate vajadusel:
+
+```env
+DB_HOST=localhost
+DB_USER=dbuser
+DB_PASSWORD=dbpass
+DB_NAME=zillow
+DB_ROOT_PASSWORD=rootpassword
+MARIADB_PORT=3306
+```
+
+**Märkus:** `.env` fail on `.gitignore`-s ja ei salvestu repositooriumisse.
+
+### 2. Käivita konteinerid
 
 ```bash
 docker compose up -d
@@ -27,19 +48,19 @@ docker compose up -d
 
 See käivitab MariaDB ja Bun konteinerid. MariaDB impordib automaatselt `dump.sql` skeemi.
 
-### 2. Installi sõltuvused
+### 3. Installi sõltuvused
 
 ```bash
 docker compose exec bun bun install
 ```
 
-### 3. Genereeri andmed
+### 4. Genereeri andmed
 
 ```bash
 docker compose exec bun bun seed.js
 ```
 
-### 4. Tühjenda andmebaas (valikuline)
+### 5. Tühjenda andmebaas (valikuline)
 
 Kui soovid andmebaasi puhastada ja uuesti täita:
 
@@ -48,7 +69,7 @@ docker compose exec bun bun clear-db.js
 docker compose exec bun bun seed.js
 ```
 
-### 5. Peata konteinerid
+### 6. Peata konteinerid
 
 ```bash
 docker compose down
