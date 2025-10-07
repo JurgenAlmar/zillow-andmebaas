@@ -2,91 +2,98 @@ Zillow andmebaasi seemne skript
 
 See projekt sisaldab MariaDB andmebaasi skeemi ja suurandmete seemne skripti, mis täidab tabelid realistlike andmetega. Kõige suurem mitte-lookup tabel properties sisaldab vähemalt 2 000 000 rida. Teistes tabelites on mõistlik suurus ja kõik FK-seosed on korrektsed.
 
-Sisu
+## Sisu
 
-dump.sql — andmebaasi skeem.
+- `dump.sql` — andmebaasi skeem
+- `seed.js` — andmete genereerimise skript
+- `clear-db.js` — andmebaasi tühjendamise skript
+- `docker-compose.yml` — MariaDB konteineri konfiguratsioon
+- `README.md` — juhend projekti käivitamiseks
 
-seed.js — Bun skript suurandmete genereerimiseks ja lisamiseks.
+## Eeldused
 
-README.md — juhend projekti käivitamiseks nullist.
+Ainus vajalik sõltuvus:
+- **Docker** ja **Docker Compose**
 
-Eeldused
+Kõik muu (MariaDB, Bun, Node.js moodulid) käivitatakse konteinerites.
 
-MariaDB 12.0.2 või uuem
+## Kiirstart
 
-Bun (https://bun.sh/
-) — JavaScript runtime
+### 1. Käivita konteinerid
 
-Võrgukonfiguratsioon ja ligipääs andmebaasile
+```bash
+docker compose up -d
+```
 
-Sammud nullist käivitamiseks
-1. Andmebaasi loomine ja skeemi import
+See käivitab MariaDB ja Bun konteinerid. MariaDB impordib automaatselt `dump.sql` skeemi.
 
-Loo andmebaas:
+### 2. Installi sõltuvused
 
-CREATE DATABASE zillow CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+```bash
+docker compose exec bun bun install
+```
 
+### 3. Genereeri andmed
 
-Impordi skeem:
+```bash
+docker compose exec bun bun seed.js
+```
 
-mysql -u kasutaja -p zillow < dump.sql
+### 4. Tühjenda andmebaas (valikuline)
 
+Kui soovid andmebaasi puhastada ja uuesti täita:
 
-Asenda kasutaja ja vajadusel -p parooliga.
+```bash
+docker compose exec bun bun clear-db.js
+docker compose exec bun bun seed.js
+```
 
-2. Vajalikud paketid
+### 5. Peata konteinerid
 
-Installi vajalikud npm paketid Bun-iga:
+```bash
+docker compose down
+```
 
-bun install
+Andmete kustutamiseks koos konteineritega:
 
-3. Seadista seed.js
+```bash
+docker compose down -v
+```
 
-Muuda failis seed.js andmebaasi ühenduse parameetrid vastavalt oma keskkonnale:
+## Andmemahud
 
-const pool = mariadb.createPool({
-  host: 'localhost',
-  user: 'dbuser',       // oma kasutajanimi
-  password: 'dbpass',   // oma parool
-  database: 'zillow',
-  connectionLimit: 5,
-});
+| Tabel             | Ridade arv    | Märkused                              |
+|-------------------|---------------|---------------------------------------|
+| users             | 200 000       | Kasutajad                            |
+| properties        | 2 000 000     | Peamine mitte-lookup tabel (suurem)  |
+| property_images   | ~10 000 000   | Keskmiselt 5 pilti kinnisvara kohta  |
+| favorites         | 1 000 000     | Kasutajate lemmikud                  |
+| inquiries         | 500 000       | Päringud kinnisvara kohta            |
 
-4. Seed skripti käivitamine
+## Andmebaasi ühendus
 
-Käivita andmete genereerimise ja importimise skript:
+Vaikimisi konfiguratsioon (muudetav `docker-compose.yml` failis):
 
-bun run seed.js
+```
+Host: localhost
+Port: 3306
+Database: zillow
+User: dbuser
+Password: dbpass
+Root password: rootpassword
+```
 
+## Optimeerimised
 
-See täidab tabelid järgmiste mahtudega:
+Seed skript kasutab järgmisi optimeerimisi:
+- Autocommit väljalülitamine
+- FK ja unique kontrolli ajutine väljalülitamine
+- Suurte partii sisestused (5000-50000 rida korraga)
+- Perioodilised commit'id mälu haldamiseks
+- Reprodutseeritav seeme (`faker.seed(12345)`)
 
-Tabel	Ridade arv	Märkused
-users	200 000	Kasutajad
-properties	2 000 000	Peamine mitte-lookup tabel (suurem)
-property_images	~10 000 000	Keskmiselt 5 pilti kinnisvara kohta
-favorites	1 000 000	Kasutajate lemmikud
-inquiries	500 000	Päringud kinnisvara kohta
-5. Ehtsus ja terviklikkus
+## Märkused
 
-Kõik andmed on genereeritud realistlikena, kasutades faker raamatukogu.
-
-Võõrvõtmed on kontrollitud ja ei teki orvukirjeid.
-
-Andmed on genereeritud partii kaupa, mis tagab jõudluse ja takistab massilist lockimist.
-
-Seeder on reprodutseeritav seemne abil (faker.seed(12345)).
-
-Indeksid ja FK kontrollid on deaktiveeritud sisestuse ajal ja aktiveeritud pärast seda.
-
-6. Indeksite ja FK-de haldamine
-
-Seed skript lülitab enne sisestust FOREIGN_KEY_CHECKS=0 ja lülitab pärast tagasi 1. Indekseid ei kustutata, vaid täidetakse massiliselt.
-
-7. Täiendavad märkused
-
-Skript on mõeldud kasutamiseks Bun runtime keskkonnas.
-
-Võimalik suurendada või vähendada ridade arvu seed.js failis funktsioonide argumentides.
-
-Kui andmebaas on suur, võib kogu täitmine võtta mitu tundi, olenevalt riistvarast.
+- Kogu andmete genereerimine võib võtta 30-60 minutit olenevalt riistvarast
+- Andmebaasi maht võib ulatuda 10-20 GB
+- Docker volume `mariadb_data` salvestab andmebaasi püsivalt
