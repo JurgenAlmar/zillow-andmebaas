@@ -5,8 +5,8 @@ faker.seed(12345); // Reprodutseeritavus
 
 const pool = mariadb.createPool({
   host: 'localhost',
-  user: 'user',       
-  password: 'Passw0rd',   
+  user: 'dbuser',
+  password: 'dbpass',
   database: 'zillow',
   connectionLimit: 5,
 });
@@ -47,7 +47,6 @@ async function insertProperties(total = 2000000) {
   const conn = await pool.getConnection();
 
   // Eeldame, et users on juba olemas
-  // Loeme user_id-de hulga (min ja max)
   const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
   const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
 
@@ -110,11 +109,9 @@ async function insertPropertyImages() {
   console.log('Inserting property images...');
   const conn = await pool.getConnection();
 
-  // Loeme property_id min ja max
   const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
   const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
 
-  // Ligikaudu keskmiselt 5 pilti kinnisvara kohta, kokku ~10M rida
   const imagesPerProperty = 5;
   const totalProperties = maxPropId - minPropId + 1;
   const totalImages = totalProperties * imagesPerProperty;
@@ -152,7 +149,6 @@ async function insertFavorites(total = 1000000) {
   const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
   const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
 
-  // Hoian favorite'i paaride unikaalsust kontrolli all
   const uniquePairs = new Set();
 
   try {
@@ -201,7 +197,6 @@ async function insertInquiries(total = 500000) {
         const property_id = faker.datatype.number({ min: minPropId, max: maxPropId });
         const agent_id = Math.random() < agentRatio ? faker.datatype.number({ min: minUserId, max: maxUserId }) : null;
 
-        // Sõnum või telefon peab olema olemas, juhuslik valik
         let message = null;
         let phone_number = null;
         if (Math.random() < 0.5) {
@@ -231,12 +226,8 @@ async function insertInquiries(total = 500000) {
 async function disableIndexesAndFKs() {
   const conn = await pool.getConnection();
   try {
-    console.log('Disabling foreign key checks and indexes...');
+    console.log('Disabling foreign key checks...');
     await conn.query('SET FOREIGN_KEY_CHECKS=0;');
-
-    // Indekseid võiks siin eemaldada või keelata vastavalt vajadusele,
-    // aga MariaDB-s ei saa indekseid lihtsalt keelata, neid saab kustutada ja hiljem taastada.
-
   } finally {
     conn.release();
   }
@@ -247,7 +238,6 @@ async function enableIndexesAndFKs() {
   try {
     console.log('Enabling foreign key checks...');
     await conn.query('SET FOREIGN_KEY_CHECKS=1;');
-
   } finally {
     conn.release();
   }
