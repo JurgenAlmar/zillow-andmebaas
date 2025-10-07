@@ -38,7 +38,7 @@ Asenda kasutaja ja vajadusel -p parooliga.
 
 Installi vajalikud npm paketid Bun-iga:
 
-bun add @faker-js/faker mariadb
+bun install
 
 3. Seadista seed.js
 
