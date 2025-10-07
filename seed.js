@@ -194,5 +194,4 @@ async function insertInquiries(total = 500000) {
 
         let message = null;
         let phone_number = null;
-        if (Math.random() < 0.5) {
-          message = faker.lorem.sentence();
+        if (Math.random()
