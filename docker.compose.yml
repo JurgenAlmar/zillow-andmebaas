@@ -6,15 +6,36 @@ services:
     container_name: zillow-mariadb
     restart: always
     environment:
-      MARIADB_ROOT_PASSWORD: rootpassword
-      MARIADB_DATABASE: zillow
-      MARIADB_USER: dbuser
-      MARIADB_PASSWORD: dbpass
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${DB_NAME:-zillow}
+      MARIADB_USER: ${DB_USER:-dbuser}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-dbpass}
     ports:
-      - "3307:3307"
+      - "${MARIADB_PORT:-3306}:3306"
     volumes:
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
       - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bun:
+    image: oven/bun:latest
+    container_name: zillow-bun
+    working_dir: /app
+    volumes:
+      - .:/app
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mariadb
+      - DB_USER=${DB_USER:-dbuser}
+      - DB_PASSWORD=${DB_PASSWORD:-dbpass}
+      - DB_NAME=${DB_NAME:-zillow}
+    command: sleep infinity
 
 volumes:
   mariadb_data:
