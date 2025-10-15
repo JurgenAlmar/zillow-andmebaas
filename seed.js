@@ -35,7 +35,7 @@ async function getConnectionWithRetry(maxRetries = 5, delay = 2000) {
   }
 }
 
-async function insertUsers(total = 200000) {
+async function insertUsers(total = 2000000) {
   console.log(`Inserting ${total} users...`);
   const conn = await getConnectionWithRetry();
 
@@ -196,51 +196,73 @@ async function insertProperties(total = 2000000) {
   }
 }
 
-async function insertPropertyImages() {
-  console.log('Inserting property images...');
+async function insertPropertyImages(total = 2000000) {
+  console.log(`Inserting ${total} property images...`);
   const conn = await getConnectionWithRetry();
-  const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
-  const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
-
-  const imagesPerProperty = 5;
-  const totalProperties = maxPropId - minPropId + 1;
-  const totalImages = totalProperties * imagesPerProperty;
 
   try {
-    for (let i = 0; i < totalImages; i += BATCH_SIZE) {
+    await conn.query('SET autocommit=0');
+    await conn.query('SET unique_checks=0');
+    await conn.query('SET foreign_key_checks=0');
+
+    const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
+    const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = [];
-      for (let j = 0; j < BATCH_SIZE && i + j < totalImages; j++) {
-        const property_id = minPropId + Math.floor((i + j) / imagesPerProperty);
-        const img_order = ((i + j) % imagesPerProperty) + 1;
-        const img_url = `https://picsum.photos/seed/${property_id}-${img_order}/800/600`;
+      for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
+        const property_id = faker.number.int({ min: minPropId, max: maxPropId });
+        const img_order = faker.number.int({ min: 1, max: 10 });
+        const img_url = `https://picsum.photos/seed/${property_id}-${img_order}-${i + j}/800/600`;
         const alt_text = `Property ${property_id} image ${img_order}`;
         batch.push([property_id, img_url, img_order, alt_text]);
       }
       const placeholders = batch.map(() => '(?,?,?,?)').join(',');
       const flatValues = batch.flat();
       await conn.query(
-        `INSERT INTO property_images (property_id, img_url, img_order, alt_text) VALUES ${placeholders}`,
+        `INSERT IGNORE INTO property_images (property_id, img_url, img_order, alt_text) VALUES ${placeholders}`,
         flatValues
       );
-      process.stdout.write(`Inserted property images: ${Math.min(i + BATCH_SIZE, totalImages)}\r`);
+
+      if ((i + BATCH_SIZE) % 100000 === 0) {
+        await conn.query('COMMIT');
+        await conn.query('START TRANSACTION');
+      }
+
+      process.stdout.write(`Inserted property images: ${Math.min(i + BATCH_SIZE, total)}\r`);
     }
+
+    await conn.query('COMMIT');
+    await conn.query('SET unique_checks=1');
+    await conn.query('SET foreign_key_checks=1');
     console.log('\nProperty images inserted.');
+  } catch (error) {
+    console.error('\n✗ Error in insertPropertyImages:', error.message);
+    await conn.query('ROLLBACK');
+    await conn.query('SET unique_checks=1');
+    await conn.query('SET foreign_key_checks=1');
+    throw error;
   } finally {
     conn.release();
   }
 }
 
-async function insertFavorites(total = 1000000) {
+async function insertFavorites(total = 2000000) {
   console.log(`Inserting ${total} favorites...`);
   const conn = await getConnectionWithRetry();
-  const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
-  const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
-  const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
-  const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
-
-  const uniquePairs = new Set();
 
   try {
+    await conn.query('SET autocommit=0');
+    await conn.query('SET unique_checks=0');
+    await conn.query('SET foreign_key_checks=0');
+
+    const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
+    const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
+    const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
+    const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
+
+    const uniquePairs = new Set();
+
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = [];
       while (batch.length < BATCH_SIZE && uniquePairs.size < total) {
@@ -256,28 +278,49 @@ async function insertFavorites(total = 1000000) {
       const placeholders = batch.map(() => '(?,?,?)').join(',');
       const flatValues = batch.flat();
       await conn.query(
-        `INSERT INTO favorites (user_id, property_id, created_at) VALUES ${placeholders}`,
+        `INSERT IGNORE INTO favorites (user_id, property_id, created_at) VALUES ${placeholders}`,
         flatValues
       );
+
+      if ((i + BATCH_SIZE) % 100000 === 0) {
+        await conn.query('COMMIT');
+        await conn.query('START TRANSACTION');
+      }
+
       process.stdout.write(`Inserted favorites: ${uniquePairs.size}\r`);
     }
+
+    await conn.query('COMMIT');
+    await conn.query('SET unique_checks=1');
+    await conn.query('SET foreign_key_checks=1');
     console.log('\nFavorites inserted.');
+  } catch (error) {
+    console.error('\n✗ Error in insertFavorites:', error.message);
+    await conn.query('ROLLBACK');
+    await conn.query('SET unique_checks=1');
+    await conn.query('SET foreign_key_checks=1');
+    throw error;
   } finally {
     conn.release();
   }
 }
 
-async function insertInquiries(total = 500000) {
+async function insertInquiries(total = 2000000) {
   console.log(`Inserting ${total} inquiries...`);
   const conn = await getConnectionWithRetry();
-  const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
-  const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
-  const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
-  const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
-
-  const agentRatio = 0.2;
 
   try {
+    await conn.query('SET autocommit=0');
+    await conn.query('SET unique_checks=0');
+    await conn.query('SET foreign_key_checks=0');
+
+    const [{ minUserId }] = await conn.query('SELECT MIN(user_id) AS minUserId FROM users');
+    const [{ maxUserId }] = await conn.query('SELECT MAX(user_id) AS maxUserId FROM users');
+    const [{ minPropId }] = await conn.query('SELECT MIN(property_id) AS minPropId FROM properties');
+    const [{ maxPropId }] = await conn.query('SELECT MAX(property_id) AS maxPropId FROM properties');
+
+    const agentRatio = 0.2;
+
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = [];
       for (let j = 0; j < BATCH_SIZE && i + j < total; j++) {
@@ -297,9 +340,25 @@ async function insertInquiries(total = 500000) {
         `INSERT INTO inquiries (user_id, property_id, agent_id, message, inquiry_at) VALUES ${placeholders}`,
         flatValues
       );
+
+      if ((i + BATCH_SIZE) % 100000 === 0) {
+        await conn.query('COMMIT');
+        await conn.query('START TRANSACTION');
+      }
+
       process.stdout.write(`Inserted inquiries: ${Math.min(i + BATCH_SIZE, total)}\r`);
     }
+
+    await conn.query('COMMIT');
+    await conn.query('SET unique_checks=1');
+    await conn.query('SET foreign_key_checks=1');
     console.log('\nInquiries inserted.');
+  } catch (error) {
+    console.error('\n✗ Error in insertInquiries:', error.message);
+    await conn.query('ROLLBACK');
+    await conn.query('SET unique_checks=1');
+    await conn.query('SET foreign_key_checks=1');
+    throw error;
   } finally {
     conn.release();
   }
