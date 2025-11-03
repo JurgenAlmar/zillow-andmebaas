@@ -45,7 +45,7 @@ const queries = [
         COUNT(p.property_id) AS 'Kuulutuste arv'
       FROM properties p
       GROUP BY p.city
-      HAVING COUNT(p.property_id) > 1
+      HAVING COUNT(p.property_id) > 1000
       ORDER BY COUNT(p.property_id) DESC
       LIMIT 10;
     `
