@@ -65,20 +65,23 @@ const queries = [
     `
   },
   {
-    name: '5️⃣ Kuvab iga kinnisvara keskmise magamistubade ja vannitubade suhte linna kaupa',
+    name: '5️⃣ Kuvab kinnisvarad, millel on kõige rohkem pilte (praktiline statistika)',
     sql: `
       SELECT
-        city AS Linn,
-        AVG(bedrooms) AS 'Keskmine magamistubade arv',
-        AVG(bathrooms) AS 'Keskmine vannitubade arv'
-      FROM properties
-      GROUP BY city
-      ORDER BY AVG(bedrooms) DESC
+        p.property_id AS Kinnisvara_ID,
+        p.address AS Aadress,
+        p.city AS Linn,
+        p.price AS Hind,
+        COUNT(pi.img_id) AS 'Piltide arv'
+      FROM properties p
+      LEFT JOIN property_images pi ON p.property_id = pi.property_id
+      GROUP BY p.property_id, p.address, p.city, p.price
+      ORDER BY COUNT(pi.img_id) DESC
       LIMIT 10;
     `
   },
   {
-    name: '6️⃣ Kuvab kõik päringud, koos kasutaja ja kinnisvara andmetega (3 tabeli ühendus)',
+    name: '6️⃣ Kuvab kõik päringud (viimased 30 päeva) koos kasutaja ja kinnisvara andmetega',
     sql: `
       SELECT
         i.inquiry_id AS Päringu_ID,
@@ -89,7 +92,8 @@ const queries = [
       FROM inquiries i
       INNER JOIN users u ON i.user_id = u.user_id
       INNER JOIN properties p ON i.property_id = p.property_id
-      WHERE i.inquiry_id <= 1000
+      WHERE i.inquiry_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        AND (p.status IS NULL OR p.status = 'active')
       ORDER BY i.inquiry_at DESC
       LIMIT 10;
     `
@@ -100,9 +104,6 @@ async function runQueries() {
   const conn = await pool.getConnection();
 
   try {
-    // Set query timeout to 30 seconds
-    await conn.query('SET SESSION max_statement_time=30');
-
     for (const query of queries) {
       console.log(`\n${'='.repeat(80)}`);
       console.log(query.name);
@@ -112,7 +113,7 @@ async function runQueries() {
       try {
         const results = await conn.query(query.sql);
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.log(`Query completed in ${duration}s - ${results.length} rows returned`);
+        console.log(`Query completed in ${duration}s - ${Array.isArray(results) ? results.length : 0} rows returned`);
         console.table(results);
       } catch (err) {
         console.error(`Query failed: ${err.message}`);
@@ -121,7 +122,9 @@ async function runQueries() {
   } catch (error) {
     console.error('Error running queries:', error);
   } finally {
-    conn.release();
+    try {
+      conn.release();
+    } catch (e) {}
     await pool.end();
   }
 }
